@@ -26,3 +26,60 @@
 		opp-supported-hw = <0x06 0x0100>;
 	};
 };
+
+&usb1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	dlink_hub: hub@1 {
+		compatible = "usb2101,8501";
+		reg = <1>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		ft232r: device@3 {
+			compatible = "usb403,6001";
+			reg = <3>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			serial@0 {
+				reg = <0>;
+
+				serdev {
+					compatible = "none,serdev-mockup";
+				};
+			};
+		};
+
+		mos7820: device@5 {
+			compatible = "usb9710,7840";
+			reg = <5>;
+
+			#address-cells = <2>;
+			#size-cells = <0>;
+
+			interface@0 {
+				compatible = "usbif9710,7840.config1.0";
+				reg = <0 1>;
+
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				serial@0 {
+					reg = <0>;
+
+					gnss {
+						compatible = "u-blox,neo-8";
+					};
+				};
+
+				serial@1 {
+					reg = <1>;
+				};
+			};
+		};
+	};
+};
