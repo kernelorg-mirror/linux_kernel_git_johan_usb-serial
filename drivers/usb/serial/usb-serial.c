@@ -35,6 +35,7 @@
 #include <linux/usb/serial.h>
 #include <linux/kfifo.h>
 #include <linux/idr.h>
+#include <linux/of.h>
 
 #define DRIVER_AUTHOR "Greg Kroah-Hartman <gregkh@linuxfoundation.org>"
 #define DRIVER_DESC "USB Serial Driver core"
@@ -97,7 +98,6 @@ static int allocate_minors(struct usb_serial *serial, int num_ports)
 		if (minor < 0)
 			goto error;
 		port->minor = minor;
-		port->port_number = i;
 	}
 	serial->minors_reserved = 1;
 	mutex_unlock(&table_lock);
@@ -589,6 +589,7 @@ static void usb_serial_port_release(struct device *dev)
 	kfifo_free(&port->write_fifo);
 	kfree(port->interrupt_in_buffer);
 	kfree(port->interrupt_out_buffer);
+	of_node_put(dev->of_node);
 	tty_port_destroy(&port->port);
 	kfree(port);
 }
@@ -857,6 +858,29 @@ static int setup_port_interrupt_out(struct usb_serial_port *port,
 	return 0;
 }
 
+/* FIXME: move to separate compilation unit? */
+static struct device_node *find_port_node(struct usb_interface *intf, int port)
+{
+	struct device_node *node;
+	u32 reg;
+
+	for_each_child_of_node(intf->dev.of_node, node) {
+		if (!node->name || of_node_cmp(node->name, "serial") != 0)
+			continue;
+
+		if (of_property_read_u32(node, "reg", &reg))
+			continue;
+
+		if (reg == port)
+			break;
+	}
+
+	dev_dbg(&intf->dev, "node %pOF, port %d: %pOFP\n", intf->dev.of_node,
+			port, node);
+
+	return node;
+}
+
 static int usb_serial_probe(struct usb_interface *interface,
 			       const struct usb_device_id *id)
 {
@@ -963,6 +987,7 @@ static int usb_serial_probe(struct usb_interface *interface,
 			retval = -ENOMEM;
 			goto err_free_epds;
 		}
+		port->port_number = i;
 		tty_port_init(&port->port);
 		port->port.ops = &serial_port_ops;
 		port->serial = serial;
@@ -976,6 +1001,7 @@ static int usb_serial_probe(struct usb_interface *interface,
 		port->dev.bus = &usb_serial_bus_type;
 		port->dev.release = &usb_serial_port_release;
 		port->dev.groups = usb_serial_port_groups;
+		port->dev.of_node = find_port_node(interface, port->port_number);
 		device_initialize(&port->dev);
 	}
 
