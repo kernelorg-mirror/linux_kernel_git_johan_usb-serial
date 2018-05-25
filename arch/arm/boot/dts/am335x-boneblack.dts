@@ -27,7 +27,18 @@
 	};
 };
 
+&am33xx_pinmux {
+	musb_dbg_pins: musb_dbg_pins {
+		pinctrl-single,pins = <
+			AM33XX_IOPAD(0x890, PIN_INPUT | MUX_MODE7)
+		>;
+	};
+};
+
 &usb1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&musb_dbg_pins>;
+
 	#address-cells = <1>;
 	#size-cells = <0>;
 
